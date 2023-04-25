@@ -193,6 +193,7 @@ namespace Club.Controllers
 
                 //3. Create a SQL query string to update the record with the specified ID value in the ClubMembers table with the data in the ClubMembers object parameter.
                 string queryString = $"UPDATE ClubMember SET FirstName=@firstName,LastName=@lastName,Rank=@rank,DOB=@DOB WHERE ID=@id;";
+                ClubInfo clubInfo = new ClubInfo();
                 //4. Using a SqlConnection object, connect to the database and execute the SQL query string to update the record with the specified ID.
                 using SqlCommand cmdUpdate = new SqlCommand(queryString, connObj);
                 {
@@ -207,7 +208,7 @@ namespace Club.Controllers
                         while (reader.Read())
                         {
                             //add all the member details to an object
-                            ClubInfo clubInfo = new ClubInfo();
+                            //ClubInfo clubInfo = new ClubInfo();
                             clubInfo.ID = Convert.ToInt32(reader["ID"]);
                             clubInfo.FirstName = reader["FirstName"].ToString();
                             clubInfo.LastName = reader["LastName"].ToString();
@@ -231,7 +232,7 @@ namespace Club.Controllers
         }
 
         [HttpGet]
-        public ActionResult Delete(int id)
+        public ActionResult Delete(int id,ClubInfo clubInfo)
         {
             // this is the same idea as the first edit function, But now we just want to delete.
             // we get the Delete view so we can see the page (this is done by [HTTPGET])
@@ -249,14 +250,14 @@ namespace Club.Controllers
                 connObj.Open();
                 string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id";
 
-                ClubInfo clubInfo = new ClubInfo();
+                //ClubInfo clubInfo = new ClubInfo();
 
                 using SqlCommand cmdSelect = new SqlCommand(stringQuery, connObj);
                 {
                     cmdSelect.Parameters.AddWithValue("@id", id);
                     using SqlDataReader reader = cmdSelect.ExecuteReader();
                     {
-                        if (reader.Read())
+                        while (reader.Read())
                         {
                             clubInfo.ID = Convert.ToInt32(reader["ID"]);
                             clubInfo.FirstName = reader["FirstName"].ToString();
@@ -264,18 +265,19 @@ namespace Club.Controllers
                             clubInfo.DOB = reader["DOB"].ToString();
                             clubInfo.Rank = reader["Rank"].ToString();
 
-                            return View(clubInfo);
+                            
                         }
                         reader.Close();
                     }
                     connObj.Close();
                 }
-                return View("Delete", Delete(clubInfo.ID));
+                return View(clubInfo);
+                //return View("Delete", Delete(clubInfo.ID));
             }
         }
 
         [HttpPost]
-        public ActionResult Delete(ClubInfo clubMember)
+        public ActionResult Delete(int id)
         {
             //then a connection object
             //then open the connection
@@ -290,26 +292,13 @@ namespace Club.Controllers
                 connObj.Open();
 
                 string queryString = $"DELETE FROM ClubMember WHERE ID=@id;";
-
+                ClubInfo clubInfo = new ClubInfo();
                 using SqlCommand cmdDelete = new SqlCommand(queryString, connObj);
                 {
-                    cmdDelete.Parameters.AddWithValue("@id", clubMember.ID);
-                    using (SqlDataReader reader = cmdDelete.ExecuteReader())
-                    {
-
-                        while (reader.Read())
-                        {
-                            ClubInfo clubInfo = new ClubInfo();
-                            clubInfo.ID = Convert.ToInt32(reader["ID"]);
-                            clubInfo.FirstName = reader["FirstName"].ToString();
-                            clubInfo.LastName = reader["LastName"].ToString();
-                            clubInfo.DOB = reader["DOB"].ToString();
-                            clubInfo.Rank = reader["Rank"].ToString();
-                        }
-                        reader.Close();
-                    }
+                   cmdDelete.Parameters.AddWithValue("@id", id);
+                   cmdDelete.ExecuteNonQuery();
                 }
-                connObj.Close();
+               
                 return View("index", GetInfo());
             }
         }
