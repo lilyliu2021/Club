@@ -37,39 +37,71 @@ namespace Club.Controllers
         public List<ClubInfo> GetInfo()
         {
             //First we need to create an empty list that will hold Club Member Objects
-
+            
             List<ClubInfo> listObj = new List<ClubInfo>();
             string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
             //then a connection object with our connection string
             using (SqlConnection connObj = new SqlConnection(connString))
             {
-                //open connection string
-                connObj.Open();
-                string queryString = "SELECT * FROM ClubMember";
-                using (SqlCommand cmdList = new SqlCommand(queryString, connObj))
+                try
                 {
-                    // use a SQLcommand to make an sql statement
-                    using (SqlDataReader reader = cmdList.ExecuteReader())
+                    //open connection string
+                    connObj.Open();
+                    string queryString = "SELECT * FROM ClubMember";
+                    using (SqlCommand cmdList = new SqlCommand(queryString, connObj))
                     {
-                        //Use data reader to read
-                        while (reader.Read())
+                        // use a SQLcommand to make an sql statement
+                        using (SqlDataReader reader = cmdList.ExecuteReader())
                         {
-                            //add all the member details to an object
-                            ClubInfo clubInfo = new ClubInfo();
-                            clubInfo.ID = Convert.ToInt32(reader["ID"]);
-                            clubInfo.FirstName = reader["FirstName"].ToString();
-                            clubInfo.LastName = reader["LastName"].ToString();
-                            clubInfo.DOB = reader["DOB"].ToString();
-                            clubInfo.Rank = reader["Rank"].ToString();
-                            listObj.Add(clubInfo);// add each object to a list
+                            //Use data reader to read
+                            while (reader.Read())
+                            {
+                                //add all the member details to an object
+                                ClubInfo clubInfo = new ClubInfo();
+                                clubInfo.ID = Convert.ToInt32(reader["ID"]);
+                                clubInfo.FirstName = reader["FirstName"].ToString();
+                                clubInfo.LastName = reader["LastName"].ToString();
+                                clubInfo.DOB = reader["DOB"].ToString();
+                                clubInfo.Rank = reader["Rank"].ToString();
+                                listObj.Add(clubInfo);// add each object to a list
+                            }
+                            reader.Close();
                         }
-                        reader.Close();
                     }
+                    connObj.Close();
                 }
-                connObj.Close();
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage="Failed in load data."+ex.Message;
+                }
                 //return the list 
                 return listObj;
             }
+        }
+
+        public int AutoIncrementID()  //Create auto increment ID
+        {
+            string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
+            string queryString = "SELECT MAX(ID) FROM ClubMember;";
+            ClubInfo clubMember = new ClubInfo();
+            using SqlConnection connObj=new SqlConnection(connString);
+            {
+                try
+                {
+                    using SqlCommand getIdComm = new SqlCommand(queryString, connObj);
+                    {
+                        getIdComm.Connection = connObj;
+                        connObj.Open();
+                        clubMember.ID = Convert.ToInt32(getIdComm.ExecuteScalar());
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in increment ID." + ex.Message;
+                }
+
+            }
+            return ++clubMember.ID;
         }
 
         [HttpGet]
@@ -78,6 +110,7 @@ namespace Club.Controllers
             //1.Begin by creating a new method called "Create" with an HTTP GET attribute.This method will be used to display a view to the user.
             //2.Inside the "Create" method, return a "View" object that displays an empty form for creating a new club member.
             //this returns our View() for create, make sure to return View()
+            
             return View();
         }
 
@@ -86,6 +119,7 @@ namespace Club.Controllers
         //6.Inside the HTTP POST method, create an instance of the "ClubMembers" class and pass the form data submitted by the user to this object.
         //3.Create a new method called "Create" with an HTTP POST attribute.This method will be used to handle the form submission.
         {
+            int id = AutoIncrementID();
             //4.Define a connection string to connect to the database.This includes the name of the database, the server name, and security credentials to access the database.
             string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
             //5.Define an SQL query string that inserts a new row into the "ClubMembers" table with the form data submitted by the user.
@@ -93,24 +127,34 @@ namespace Club.Controllers
             string queryString = $"INSERT INTO ClubMember (ID,FirstName,LastName,Rank,DOB) VALUES (@id,@firstName,@lastName,@rank,@DOB)";
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                //7. Open a connection to the database using the connection string.
-                connObj.Open();
-                //8. Create a command object called "cmd" that will be used to execute the SQL query against the database.
-                using SqlCommand cmdCreate = new SqlCommand(queryString, connObj);
+                try
                 {
-                    //------add query string with parameters
-                    cmdCreate.Parameters.AddWithValue("@id", clubMember.ID);                    
-                    cmdCreate.Parameters.AddWithValue("@firstName", clubMember.FirstName);
-                    cmdCreate.Parameters.AddWithValue("@lastName", clubMember.LastName);
-                    cmdCreate.Parameters.AddWithValue("@rank",clubMember.Rank);
-                    cmdCreate.Parameters.AddWithValue("@DOB", clubMember.DOB);
-                    //9. Set the command object's connection property to the open connection to the database.
-                    cmdCreate.Connection = connObj;
-                    //connObj.Open();
-                    //10. Execute the SQL query using the command object to insert the new club member data into the database.
-                    cmdCreate.ExecuteNonQuery();
-                    //11. Close the database connection.
-                    connObj.Close();
+                    //7. Open a connection to the database using the connection string.
+                    connObj.Open();
+                    //8. Create a command object called "cmd" that will be used to execute the SQL query against the database.
+                    
+                    using SqlCommand cmdCreate = new SqlCommand(queryString, connObj);
+                    {
+                        //------add query string with parameters
+                        cmdCreate.Parameters.AddWithValue("@id", id);                  
+                        cmdCreate.Parameters.AddWithValue("@firstName", clubMember.FirstName);
+                        cmdCreate.Parameters.AddWithValue("@lastName", clubMember.LastName);
+                        cmdCreate.Parameters.AddWithValue("@rank", clubMember.Rank);
+                        cmdCreate.Parameters.AddWithValue("@DOB", clubMember.DOB);
+                        
+                        //9. Set the command object's connection property to the open connection to the database.
+                        cmdCreate.Connection = connObj;
+                        //connObj.Open();
+                        //10. Execute the SQL query using the command object to insert the new club member data into the database.
+                        cmdCreate.ExecuteNonQuery();
+                        //11. Close the database connection.
+                        connObj.Close();
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in Insert data." + ex.Message;
+                    return View();
                 }
             }
             //12. Return a "View" object that displays the "Index" view and the updated data retrieved from the database by calling the "GetInfoFromDB" method.
@@ -125,45 +169,45 @@ namespace Club.Controllers
             string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                connObj.Open();
-                //3. Create a SQL query string to select the record with the specified id value from the ClubMembers table.
-                string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id";
-                //4. Create a new ClubMembers object to store the retrieved record data.
-                ClubInfo clubInfo = new ClubInfo();
-                //5. Using a SqlConnection object, connect to the database and execute the SQL query string to retrieve the record with the specified id.
-                using SqlCommand cmdEdit = new SqlCommand(stringQuery, connObj);
+                try
                 {
-                    cmdEdit.Parameters.AddWithValue("@id", id);
-                    //6. Using a SqlDataReader object, read the retrieved record data and store it in the ClubMembers object.
-                    using SqlDataReader reader = cmdEdit.ExecuteReader();
+                    connObj.Open();
+                    //3. Create a SQL query string to select the record with the specified id value from the ClubMembers table.
+                    string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id";
+                    //4. Create a new ClubMembers object to store the retrieved record data.
+                    ClubInfo clubInfo = new ClubInfo();
+                    //5. Using a SqlConnection object, connect to the database and execute the SQL query string to retrieve the record with the specified id.
+                    using SqlCommand cmdEdit = new SqlCommand(stringQuery, connObj);
                     {
-                        if (reader.Read())
+                        cmdEdit.Parameters.AddWithValue("@id", id);
+                        //6. Using a SqlDataReader object, read the retrieved record data and store it in the ClubMembers object.
+                        using SqlDataReader reader = cmdEdit.ExecuteReader();
                         {
-                            clubInfo.ID = Convert.ToInt32(reader["ID"]);
-                            clubInfo.FirstName = reader["FirstName"].ToString();
-                            clubInfo.LastName = reader["LastName"].ToString();
-                            clubInfo.DOB = reader["DOB"].ToString();
-                            clubInfo.Rank = reader["Rank"].ToString();
+                            if (reader.Read())
+                            {
+                                clubInfo.ID = Convert.ToInt32(reader["ID"]);
+                                clubInfo.FirstName = reader["FirstName"].ToString();
+                                clubInfo.LastName = reader["LastName"].ToString();
+                                clubInfo.DOB = reader["DOB"].ToString();
+                                clubInfo.Rank = reader["Rank"].ToString();
 
-                            //ClubInfo viewModel = new ClubInfo
-                            //{
-                            //    ID = reader.GetInt32(reader.GetOrdinal("ID")),
-                            //    FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
-                            //    LastName = reader.GetString(reader.GetOrdinal("LastName")),
-                            //    Rank=reader.GetString(reader.GetOrdinal("Rank")),
-                            //    DOB=reader.GetString(reader.GetOrdinal("DOB"))
-                            //};
-                            //return View(viewModel);
-                            return View(clubInfo);
+                                
+                                return View(clubInfo);
+                            }
+                            reader.Close();
                         }
-                        reader.Close();
                     }
+
+                    //7. Return the ClubMembers object to the corresponding view using the View method.
+                    connObj.Close();
+
+                    return View("Edit", Edit(clubInfo.ID));
                 }
-
-                //7. Return the ClubMembers object to the corresponding view using the View method.
-                connObj.Close();
-                return View("Edit", Edit(clubInfo.ID));
-
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in Search data." + ex.Message;
+                    return View();
+                }
                 // this is the same idea as the first create function , just a different purpose.
                 //    // we get the edit view so we can see the page (this is done by [HTTPGET])
                 //    // then we need to make a member object
@@ -189,44 +233,52 @@ namespace Club.Controllers
             //2. Inside the HttpPost action method, create a connection string to connect to the database.
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                connObj.Open();
-
-                //3. Create a SQL query string to update the record with the specified ID value in the ClubMembers table with the data in the ClubMembers object parameter.
-                string queryString = $"UPDATE ClubMember SET FirstName=@firstName,LastName=@lastName,Rank=@rank,DOB=@DOB WHERE ID=@id;";
-                ClubInfo clubInfo = new ClubInfo();
-                //4. Using a SqlConnection object, connect to the database and execute the SQL query string to update the record with the specified ID.
-                using SqlCommand cmdUpdate = new SqlCommand(queryString, connObj);
+                try
                 {
-                    cmdUpdate.Parameters.AddWithValue("@id", clubMember.ID);
-                    cmdUpdate.Parameters.AddWithValue("@firstName", clubMember.FirstName);
-                    cmdUpdate.Parameters.AddWithValue("@lastName", clubMember.LastName);
-                    cmdUpdate.Parameters.AddWithValue("@rank", clubMember.Rank);
-                    cmdUpdate.Parameters.AddWithValue("@DOB", clubMember.DOB);
-                    using (SqlDataReader reader = cmdUpdate.ExecuteReader())
-                    {
-                        //Use data reader to read
-                        while (reader.Read())
-                        {
-                            //add all the member details to an object
-                            //ClubInfo clubInfo = new ClubInfo();
-                            clubInfo.ID = Convert.ToInt32(reader["ID"]);
-                            clubInfo.FirstName = reader["FirstName"].ToString();
-                            clubInfo.LastName = reader["LastName"].ToString();
-                            clubInfo.DOB = reader["DOB"].ToString();
-                            clubInfo.Rank = reader["Rank"].ToString();
-                        }
-                        reader.Close();
-                    }
-                }
-                //then a connection object
-                //then open the connection
-                //now make a Command with a query to find the data of the member you want to edit
-                // Now use a data reader to read the data
-                // Execte query
-                // redirect to /Club
+                    connObj.Open();
 
-                connObj.Close();
-                return View("index", GetInfo());
+                    //3. Create a SQL query string to update the record with the specified ID value in the ClubMembers table with the data in the ClubMembers object parameter.
+                    string queryString = $"UPDATE ClubMember SET FirstName=@firstName,LastName=@lastName,Rank=@rank,DOB=@DOB WHERE ID=@id;";
+                    ClubInfo clubInfo = new ClubInfo();
+                    //4. Using a SqlConnection object, connect to the database and execute the SQL query string to update the record with the specified ID.
+                    using SqlCommand cmdUpdate = new SqlCommand(queryString, connObj);
+                    {
+                        cmdUpdate.Parameters.AddWithValue("@id", clubMember.ID);
+                        cmdUpdate.Parameters.AddWithValue("@firstName", clubMember.FirstName);
+                        cmdUpdate.Parameters.AddWithValue("@lastName", clubMember.LastName);
+                        cmdUpdate.Parameters.AddWithValue("@rank", clubMember.Rank);
+                        cmdUpdate.Parameters.AddWithValue("@DOB", clubMember.DOB);
+                        using (SqlDataReader reader = cmdUpdate.ExecuteReader())
+                        {
+                            //Use data reader to read
+                            while (reader.Read())
+                            {
+                                //add all the member details to an object
+                                //ClubInfo clubInfo = new ClubInfo();
+                                clubInfo.ID = Convert.ToInt32(reader["ID"]);
+                                clubInfo.FirstName = reader["FirstName"].ToString();
+                                clubInfo.LastName = reader["LastName"].ToString();
+                                clubInfo.DOB = reader["DOB"].ToString();
+                                clubInfo.Rank = reader["Rank"].ToString();
+                            }
+                            reader.Close();
+                        }
+                    }
+                    //then a connection object
+                    //then open the connection
+                    //now make a Command with a query to find the data of the member you want to edit
+                    // Now use a data reader to read the data
+                    // Execte query
+                    // redirect to /Club
+
+                    connObj.Close();
+                    return View("index", GetInfo());
+                }
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in update data." + ex.Message;
+                    return View();
+                }
                 //5. Redirect the user to the Index action method of the controller class.
             }
         }
@@ -247,32 +299,40 @@ namespace Club.Controllers
             string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                connObj.Open();
-                string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id";
-
-                //ClubInfo clubInfo = new ClubInfo();
-
-                using SqlCommand cmdSelect = new SqlCommand(stringQuery, connObj);
+                try
                 {
-                    cmdSelect.Parameters.AddWithValue("@id", id);
-                    using SqlDataReader reader = cmdSelect.ExecuteReader();
-                    {
-                        while (reader.Read())
-                        {
-                            clubInfo.ID = Convert.ToInt32(reader["ID"]);
-                            clubInfo.FirstName = reader["FirstName"].ToString();
-                            clubInfo.LastName = reader["LastName"].ToString();
-                            clubInfo.DOB = reader["DOB"].ToString();
-                            clubInfo.Rank = reader["Rank"].ToString();
+                    connObj.Open();
+                    string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id";
 
-                            
+                    //ClubInfo clubInfo = new ClubInfo();
+
+                    using SqlCommand cmdSelect = new SqlCommand(stringQuery, connObj);
+                    {
+                        cmdSelect.Parameters.AddWithValue("@id", id);
+                        using SqlDataReader reader = cmdSelect.ExecuteReader();
+                        {
+                            while (reader.Read())
+                            {
+                                clubInfo.ID = Convert.ToInt32(reader["ID"]);
+                                clubInfo.FirstName = reader["FirstName"].ToString();
+                                clubInfo.LastName = reader["LastName"].ToString();
+                                clubInfo.DOB = reader["DOB"].ToString();
+                                clubInfo.Rank = reader["Rank"].ToString();
+
+
+                            }
+                            reader.Close();
                         }
-                        reader.Close();
+                        connObj.Close();
                     }
-                    connObj.Close();
+                    return View(clubInfo);
+                    //return View("Delete", Delete(clubInfo.ID));
                 }
-                return View(clubInfo);
-                //return View("Delete", Delete(clubInfo.ID));
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in Search data." + ex.Message;
+                    return View();
+                }
             }
         }
 
@@ -289,17 +349,25 @@ namespace Club.Controllers
 
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                connObj.Open();
-
-                string queryString = $"DELETE FROM ClubMember WHERE ID=@id;";
-                ClubInfo clubInfo = new ClubInfo();
-                using SqlCommand cmdDelete = new SqlCommand(queryString, connObj);
+                try
                 {
-                   cmdDelete.Parameters.AddWithValue("@id", id);
-                   cmdDelete.ExecuteNonQuery();
+                    connObj.Open();
+
+                    string queryString = $"DELETE FROM ClubMember WHERE ID=@id;";
+                    ClubInfo clubInfo = new ClubInfo();
+                    using SqlCommand cmdDelete = new SqlCommand(queryString, connObj);
+                    {
+                        cmdDelete.Parameters.AddWithValue("@id", id);
+                        cmdDelete.ExecuteNonQuery();
+                    }
+
+                    return View("index", GetInfo());
                 }
-               
-                return View("index", GetInfo());
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in delete data." + ex.Message;
+                    return View();
+                }
             }
         }
         [HttpGet]
@@ -314,33 +382,41 @@ namespace Club.Controllers
             string connString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=ClubInfo;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False";
             using SqlConnection connObj = new SqlConnection(connString);
             {
-                connObj.Open();
-                string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id;";
-                //now make a Command with a query to find the data of the member you want to See
-                // Now use a data reader to read the data
-                // put the data into our member object
-                using SqlCommand cmdDetail = new SqlCommand(stringQuery, connObj);
+                try
                 {
-                    cmdDetail.Parameters.AddWithValue("@id", id);
-                    using SqlDataReader reader = cmdDetail.ExecuteReader();
+                    connObj.Open();
+                    string stringQuery = $"SELECT * FROM CLubMember WHERE ID=@id;";
+                    //now make a Command with a query to find the data of the member you want to See
+                    // Now use a data reader to read the data
+                    // put the data into our member object
+                    using SqlCommand cmdDetail = new SqlCommand(stringQuery, connObj);
                     {
-                        if (reader.Read())
+                        cmdDetail.Parameters.AddWithValue("@id", id);
+                        using SqlDataReader reader = cmdDetail.ExecuteReader();
                         {
-                            member.ID = Convert.ToInt32(reader["ID"]);
-                            member.FirstName = reader["FirstName"].ToString();
-                            member.LastName = reader["LastName"].ToString();
-                            member.DOB = reader["DOB"].ToString();
-                            member.Rank = reader["Rank"].ToString();
+                            if (reader.Read())
+                            {
+                                member.ID = Convert.ToInt32(reader["ID"]);
+                                member.FirstName = reader["FirstName"].ToString();
+                                member.LastName = reader["LastName"].ToString();
+                                member.DOB = reader["DOB"].ToString();
+                                member.Rank = reader["Rank"].ToString();
 
-                            //return View(member);
-                            //now return the View with your member profile
+                                //return View(member);
+                                //now return the View with your member profile
+                            }
+                            reader.Close();
                         }
-                        reader.Close();
                     }
+                    connObj.Close();
+                    // When you run your program you will see the your member data
+                    return View("Details", member);
                 }
-                connObj.Close();
-                // When you run your program you will see the your member data
-                return View("Details", member);
+                catch (SqlException ex)
+                {
+                    ViewBag.ErrorMessage = "Failed in load details data." + ex.Message;
+                    return View("Details", member);
+                }
             }
         }
     }
